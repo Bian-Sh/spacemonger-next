@@ -1,4 +1,4 @@
-# Task Plan: Agent Skill Router 闁告宕甸垾鏍磽閺嶎偆鍨抽柛?
+﻿# Task Plan: Agent Skill Router 闁告宕甸垾鏍磽閺嶎偆鍨抽柛?
 
 ## 闁烩晩鍠楅悥?
 闁?`AiSkillRouter` 濞寸姴绨奸懙鎴﹀棘閸パ冨綘闂佹鍠栭悺褔寮稿顐㈩洭/缁绢収鍓涚槐顏堟儘娴ｇ晫鐔呴柣銏″敾缁辨繈寮ㄩ懜鍨異闁瑰瓨鍔忛埀顒佺┚gent 閻庡箍鍨洪崺娑氱博椤栨繂鍘撮柛鏃€鐩埀顒佷亢缁?prompt/skill 濠㈠湱澧楀Σ鎴﹀灳濠靛牊鐣遍柡鍫氬亾閻忓繐绻愰悿鍕偝鐢喚绐桝pp 闁告劕鎳愰悿鍡欏娴ｇ儤纾搁柟娈垮亝瀵?婵炲鍔岄崬鐣屾偘閵婏妇鍙€閻犲洢鍨奸崗姗€宕濆☉宕囩濞达絽妫旂粭澶愬箮婵犲浂妫戦梻鍕ㄦ櫇閻ｈ鈻旈弴妯峰亾娑斾苟ity 婵炴挸鎳愰幃濠勬喆閸曨偄鐏熼柕鍡曟祰椤曘垻鎳涢埀顒勫礂閹惰姤鏆涢悹鍥хТ閸熸挸顫㈢拠鍙夎含 App 濞戞搩鍘归埀?
@@ -49,3 +49,11 @@
 - [x] 2026-06-30 22:45:30 杩藉姞锛氬鑸爮鏄剧ず瑙ｆ瀽鍚庣殑鐪熷疄璺緞锛屽苟涓?AI 鎻愪緵璺緞瑙ｆ瀽/鍚堟硶鎬ф鏌?toolcall銆?
 
 - [ ] 2026-06-30 22:54:29 杩藉姞锛氭洿鏂?agent system prompt锛屾槑纭?AI 鑳藉姏杈圭晫涓?resolve_path/propose 宸ュ叿浣跨敤鏂瑰紡銆?
+
+## 2026-07-01 path cleanup recommendation skill
+- [x] 梳理现有 skill 路由和按钮分析流程。
+- [x] 新增通用路径推荐清理 skill。
+- [x] 更新路由、保护列表、solution item 和测试。
+- [x] 运行 AiSkillRouterTests 验证通过。
+- [x] 2026-07-01 path cleanup recommendation skill validation complete: Router/AgentRuntime/ChatViewModel tests completed.
+- 修正：`userprofile` 只是示例；最终实现为通用 `path-cleanup-recommendation`，并移除本地隐式路由。

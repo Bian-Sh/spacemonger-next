@@ -1,4 +1,5 @@
 ﻿using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -28,6 +29,10 @@ public partial class ChatPanel : UserControl
         if (_viewModel != null)
         {
             _viewModel.Messages.CollectionChanged -= Messages_CollectionChanged;
+            foreach (var message in _viewModel.Messages)
+            {
+                message.PropertyChanged -= Message_PropertyChanged;
+            }
         }
 
         _viewModel = vm;
@@ -35,6 +40,10 @@ public partial class ChatPanel : UserControl
 
         // Subscribe to collection changes for auto-scroll
         vm.Messages.CollectionChanged += Messages_CollectionChanged;
+        foreach (var message in vm.Messages)
+        {
+            message.PropertyChanged += Message_PropertyChanged;
+        }
     }
 
 
@@ -82,7 +91,31 @@ public partial class ChatPanel : UserControl
 
     private void Messages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems is not null)
+        {
+            foreach (ChatMessage message in e.OldItems)
+            {
+                message.PropertyChanged -= Message_PropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (ChatMessage message in e.NewItems)
+            {
+                message.PropertyChanged += Message_PropertyChanged;
+            }
+        }
+
         if (e.Action == NotifyCollectionChangedAction.Add)
+        {
+            ScrollToBottom();
+        }
+    }
+
+    private void Message_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ChatMessage.Text) or nameof(ChatMessage.Thinking))
         {
             ScrollToBottom();
         }

@@ -61,3 +61,9 @@
 - 现场日志显示 Chat response completed; hasProposal=True，但 UI 没有 PendingInteractionCard，也没有 action executor/scan 日志。
 - 根因：UI 层 ApplyProposalIfAny 只接受直接 {action, card} 且 kind 必须 PascalCase；真实模型/tool 结果可能返回 {ok,true, proposal:{...}} 或 snake_case kind（如 discover_unity_libraries），导致 proposal 被静默丢弃。
 - 修复：兼容 wrapped proposal 与 snake_case kind，并在有 proposal 但不能转卡片时打 Warning。
+
+## 2026-07-01 path cleanup recommendation skill
+- `disk-management` 覆盖一般磁盘能力；路径级“扫描并推荐清理”应沉淀为通用内置 skill，而不是 userprofile 专用流程。
+- 直接点击“分析”按钮时，`MainWindow.Console.cs` 已在推荐 ScrollView 有数据时弹窗确认；AI toolcall 不需要重复这一层。
+- `AiSkillRouter` 不应再做自然语言关键词路由；Agent 通过 `manage_disk_skills` list/read 发现并读取适用 skill。
+- 修正：`userprofile` 只是示例；最终实现为通用 `path-cleanup-recommendation`，并移除本地隐式路由。

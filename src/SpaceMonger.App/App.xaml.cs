@@ -44,7 +44,7 @@ public partial class App : Application
         services.AddHttpClient("Anthropic", client =>
         {
             client.BaseAddress = AnthropicOptions.GetBaseUri();
-            client.Timeout = TimeSpan.FromSeconds(120);
+            client.Timeout = TimeSpan.FromSeconds(300);
         });
 
         // Theme manager (singleton, initialized early)

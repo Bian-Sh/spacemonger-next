@@ -71,6 +71,10 @@ public sealed record AiActionProgress(
     string Title,
     AiActionProgressStatus Status);
 
+public sealed record AiWorkflowStep(
+    string StepId,
+    string Title);
+
 public sealed class AiInteractionCard : INotifyPropertyChanged
 {
     private AiInteractionCardStatus _status = AiInteractionCardStatus.Pending;
@@ -86,6 +90,8 @@ public sealed class AiInteractionCard : INotifyPropertyChanged
     public string ConfirmText { get; init; } = "确认";
     public string CancelText { get; init; } = "取消";
     public string? FollowUpPrompt { get; init; }
+    public IReadOnlyList<AiWorkflowStep> WorkflowSteps { get; init; } = [];
+    public string? WorkflowActiveStepId { get; init; }
     public required AiActionRequest Action { get; init; }
 
     public string? UserNotes

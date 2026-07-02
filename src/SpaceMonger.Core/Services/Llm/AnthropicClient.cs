@@ -15,7 +15,7 @@ public class AnthropicClient : ILlmClient
     private const int AnalysisMaxTokens = 8192;
     private const int ChatMaxTokens = 4096;
     private const int ValidationMaxTokens = 10;
-    private static readonly TimeSpan AnalysisTimeout = TimeSpan.FromSeconds(120);
+    private static readonly TimeSpan AnalysisTimeout = TimeSpan.FromSeconds(300);
     public static string LastResponseStopReason { get; private set; } = string.Empty;
     public static string LastResponseEnvelopePath { get; private set; } = string.Empty;
     public static string LastResponseThinkingPath { get; private set; } = string.Empty;
@@ -45,7 +45,7 @@ public class AnthropicClient : ILlmClient
             [new("user", fileMetadataJson)],
             AnalysisMaxTokens,
             GetModel(baseUrl, preferDeepSeekPro: true, modelName),
-            IsDeepSeekAnthropicEndpoint(baseUrl) && !enableThinking);
+            IsDeepSeekAnthropicEndpoint(baseUrl));
         DebugBreakpoints.Hit("llm-analysis-request-built");
 
         return await SendRequestWithRetryAsync(requestBody, apiKey, baseUrl, timeoutCts.Token).ConfigureAwait(false);

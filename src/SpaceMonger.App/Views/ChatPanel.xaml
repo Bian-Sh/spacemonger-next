@@ -316,8 +316,7 @@
                     </Style>
                 </Canvas.Style>
 
-                <Border MinWidth="168"
-                        MaxWidth="280"
+                <Border Width="280"
                         Padding="10,8"
                         Canvas.Left="0"
                         Canvas.Bottom="32"
@@ -759,7 +758,25 @@
                                                                 </TextBlock.Style>
                                                             </TextBlock>
                                                         </StackPanel>
-                                                        <TextBlock Text="{Binding Thinking, Mode=OneWay}"
+                                                        <TextBlock Text="{Binding ThinkingPreview, Mode=OneWay}"
+                                                                   TextWrapping="NoWrap"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   FontSize="12"
+                                                                   Foreground="#CCFF9500"
+                                                                   Margin="0,4,0,0">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsThinkingExpanded}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                        </DataTrigger>
+
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding ThinkingBody, Mode=OneWay}"
                                                                    TextWrapping="Wrap"
                                                                    FontSize="12"
                                                                    Foreground="#CCFF9500"

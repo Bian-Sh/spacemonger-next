@@ -135,6 +135,29 @@ public class AgentRuntimeTests
     }
 
     [Fact]
+    public async Task RunAsync_SystemPromptAllowsAgentSkillDiscoveryWithoutKeywordRouting()
+    {
+        var llm = new CapturingLlmClient("ok");
+        var runtime = new AgentRuntime(llm, [new ManageDiskSkillsTool(new SpaceMonger.Core.Services.Copilot.FileSkillPromptProvider())]);
+
+        await runtime.RunAsync(
+            null,
+            [],
+            @"推荐清理 D:\Downloads",
+            [],
+            "zh-CN",
+            "key",
+            null,
+            enableThinking: false,
+            onThinkingToken: null,
+            CancellationToken.None);
+
+        llm.LastSystemPrompt.Should().Contain("use manage_disk_skills list/read to discover and read relevant built-in or user skills");
+        llm.LastSystemPrompt.Should().Contain("create/update/delete only when the user explicitly asks to manage skills");
+        llm.LastSystemPrompt.Should().Contain("will_overwrite_existing_data=true");
+    }
+
+    [Fact]
     public async Task RunAsync_SystemPromptTreatsConfiguredLanguageAsAppPolicy()
     {
         var llm = new CapturingLlmClient("ok");

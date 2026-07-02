@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 using SpaceMonger.Core.Services.Copilot;
 using SpaceMonger.Core.Services.Scanning;
@@ -103,9 +103,9 @@ public sealed class GetCopilotContextTool : AppCopilotToolBase
 public sealed class ProposeCopilotActionTool : AppCopilotToolBase
 {
     public override string Name => "propose_copilot_action";
-    public override string Description => "Propose a host copilot action. Clear low-risk scan and recommendation-analysis actions may execute directly; ambiguous, destructive, or skill-confirmed workflows remain confirmation cards.";
+    public override string Description => "Propose a host copilot action. Clear low-risk scan and recommendation-analysis actions may execute directly; ambiguous, destructive, or skill-confirmed workflows remain confirmation cards. Use follow_up_prompt only when the selected skill requires the agent to continue after a successful scan.";
     public override JsonElement Schema { get; } = SchemaJson("""
-        {"type":"object","properties":{"kind":{"type":"string","enum":["StartScan","AnalyzeCleanup","DiscoverUnityLibraries","ClearConversation","NavigateToScannedPath","scan","analyze_cleanup","discover_unity_libraries","clear_conversation","navigate"]},"path":{"type":"string"},"scope_label":{"type":"string"},"will_overwrite_existing_data":{"type":"boolean"},"user_notes":{"type":"string","description":"Optional user constraints or supplemental instructions to pass with the action."},"title":{"type":"string"},"description":{"type":"string"},"impact":{"type":"string"},"confirm_text":{"type":"string"},"cancel_text":{"type":"string"}},"required":["kind"]}
+        {"type":"object","properties":{"kind":{"type":"string","enum":["StartScan","AnalyzeCleanup","DiscoverUnityLibraries","ClearConversation","NavigateToScannedPath","scan","analyze_cleanup","discover_unity_libraries","clear_conversation","navigate"]},"path":{"type":"string"},"scope_label":{"type":"string"},"will_overwrite_existing_data":{"type":"boolean"},"user_notes":{"type":"string","description":"Optional user constraints or supplemental instructions to pass with the action."},"follow_up_prompt":{"type":"string","description":"Optional agent-authored follow-up user prompt to run after this action succeeds. Use for skill workflows that need scan first, then another agent turn."},"workflow_steps":{"type":"array","description":"Optional agent-authored workflow indicator steps for the host UI. The host renders these generic steps without inferring natural-language intent.","items":{"type":"object","properties":{"step_id":{"type":"string"},"title":{"type":"string"}},"required":["step_id","title"]}},"workflow_active_step_id":{"type":"string","description":"Optional step_id from workflow_steps that corresponds to the proposed action currently being executed."},"title":{"type":"string"},"description":{"type":"string"},"impact":{"type":"string"},"confirm_text":{"type":"string"},"cancel_text":{"type":"string"}},"required":["kind"]}
         """);
 
     public override Task<JsonElement> ExecuteAsync(AgentContext context, JsonElement arguments, CancellationToken cancellationToken)
@@ -117,8 +117,11 @@ public sealed class ProposeCopilotActionTool : AppCopilotToolBase
         var description = GetString(arguments, "description")?.Trim();
         var impact = GetString(arguments, "impact")?.Trim();
         var userNotes = GetString(arguments, "user_notes")?.Trim();
+        var followUpPrompt = GetString(arguments, "follow_up_prompt")?.Trim();
         var confirmText = GetString(arguments, "confirm_text")?.Trim();
         var cancelText = GetString(arguments, "cancel_text")?.Trim();
+        var workflowSteps = GetWorkflowSteps(arguments);
+        var workflowActiveStepId = GetString(arguments, "workflow_active_step_id")?.Trim();
         var willOverwrite = arguments.ValueKind == JsonValueKind.Object
             && arguments.TryGetProperty("will_overwrite_existing_data", out var overwriteProp)
             && overwriteProp.ValueKind is JsonValueKind.True or JsonValueKind.False
@@ -150,12 +153,44 @@ public sealed class ProposeCopilotActionTool : AppCopilotToolBase
                     description,
                     impact,
                     confirm_text = confirmText,
-                    cancel_text = cancelText
-                }
+                    cancel_text = cancelText,
+                    follow_up_prompt = followUpPrompt
+                },
+                workflow_steps = workflowSteps,
+                workflow_active_step_id = workflowActiveStepId
             }
         }));
     }
 
+    private static IReadOnlyList<object> GetWorkflowSteps(JsonElement arguments)
+    {
+        if (arguments.ValueKind != JsonValueKind.Object
+            || !arguments.TryGetProperty("workflow_steps", out var steps)
+            || steps.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var result = new List<object>();
+        foreach (var step in steps.EnumerateArray())
+        {
+            if (step.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var stepId = GetString(step, "step_id")?.Trim();
+            var title = GetString(step, "title")?.Trim();
+            if (string.IsNullOrWhiteSpace(stepId) || string.IsNullOrWhiteSpace(title))
+            {
+                continue;
+            }
+
+            result.Add(new { step_id = stepId, title });
+        }
+
+        return result;
+    }
     private static AiActionKind ResolveActionKind(string? kind)
     {
         if (string.IsNullOrWhiteSpace(kind))

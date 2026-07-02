@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using NSubstitute;
 using FluentAssertions;
 using SpaceMonger.App.Services.Copilot;
@@ -44,6 +44,39 @@ public class ChatViewModelProposalTests
         message.InteractionCard!.Title.Should().Be("Scan this path");
         message.InteractionCard.Action.Kind.Should().Be(AiActionKind.StartScan);
         message.InteractionCard.Action.Path.Should().Be(@"D:\Downloads");
+    }
+    [Fact]
+    public void ApplyProposalIfAny_CarriesAgentAuthoredWorkflowSteps()
+    {
+        var message = new ChatMessage();
+        var proposal = JsonSerializer.SerializeToElement(new
+        {
+            action = new
+            {
+                kind = nameof(AiActionKind.StartScan),
+                path = @"D:\Downloads",
+                will_overwrite_existing_data = true
+            },
+            workflow_active_step_id = "scan_path",
+            workflow_steps = new[]
+            {
+                new { step_id = "validate_path", title = "鏍￠獙璺緞" },
+                new { step_id = "scan_path", title = "Scan target folder" },
+                new { step_id = "analyze_recommendations", title = "Analyze cleanup recommendations" }
+            },
+            card = new
+            {
+                title = "Scan this path",
+                description = "Scan before analysis."
+            }
+        });
+
+        ChatViewModel.ApplyProposalIfAny(message, proposal);
+
+        message.InteractionCard.Should().NotBeNull();
+        message.InteractionCard!.WorkflowActiveStepId.Should().Be("scan_path");
+        message.InteractionCard.WorkflowSteps.Should().HaveCount(3);
+        message.InteractionCard.WorkflowSteps[1].Title.Should().Be("Scan target folder");
     }
 
     [Fact]
@@ -153,7 +186,7 @@ public class ChatViewModelProposalTests
         viewModel.InputText = "@";
 
         viewModel.IsSkillMentionMenuOpen.Should().BeTrue();
-        viewModel.SkillMentionSuggestions.Select(item => item.Mention).Should().Contain(["@app-guide", "@disk-management", "@unity-project-cleanup"]);
+        viewModel.SkillMentionSuggestions.Select(item => item.Mention).Should().Contain(["@app-guide", "@disk-management", "@path-cleanup-recommendation", "@unity-project-cleanup"]);
         viewModel.SelectedSkillMentionSuggestion.Should().NotBeNull();
     }
 
@@ -346,9 +379,200 @@ public class ChatViewModelProposalTests
 
         viewModel.PendingInteractionCard.Should().BeNull();
         viewModel.Messages.Last().Text.Should().Be("I prepared a scan card.");
+        viewModel.Messages.Last().Thinking.Should().BeEmpty();
         viewModel.Messages.Last().OperationResultText.Should().Contain("\u626b\u63cf\u5b8c\u6210");
         await actionExecutor.Received(1).ExecuteAsync(
             Arg.Is<AiActionRequest>(request => request.Kind == AiActionKind.StartScan && request.Path == temp.Path),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<IProgress<AiActionProgress>>());
+    }
+    [Fact]
+    public async Task SendCommand_ForDirectScanProposal_UsesAgentWorkflowActiveStep()
+    {
+        using var temp = new TempScanRoot();
+        var proposal = JsonSerializer.SerializeToElement(new
+        {
+            action = new
+            {
+                kind = nameof(AiActionKind.StartScan),
+                path = temp.Path,
+                will_overwrite_existing_data = false
+            },
+            workflow_active_step_id = "scan_path",
+            workflow_steps = new[]
+            {
+                new { step_id = "validate_path", title = "鏍￠獙璺緞" },
+                new { step_id = "check_existing_data", title = "检查已有数据" },
+                new { step_id = "scan_path", title = "Scan target folder" },
+                new { step_id = "analyze_recommendations", title = "Analyze cleanup recommendations" },
+                new { step_id = "finish", title = "瀹屾垚" }
+            }
+        });
+        var chatService = Substitute.For<IChatService>();
+        chatService.StreamSkillMessageWithThinkingAsync(
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<AiSkill>>(),
+                Arg.Any<string?>(),
+                Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>(),
+                Arg.Any<Action<string>?>(),
+                Arg.Any<Action<string>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new ChatResponse("Scanning.", string.Empty, proposal));
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var actionExecutor = Substitute.For<IAiDiskActionExecutor>();
+        actionExecutor.ExecuteAsync(Arg.Any<AiActionRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IProgress<AiActionProgress>>())
+            .Returns(async _ =>
+            {
+                started.SetResult();
+                await release.Task;
+                return AiActionResult.Ok("scan complete");
+            });
+        var viewModel = CreateViewModel(chatService, new AiSkillRoutingResult([]));
+        viewModel.SetActionExecutor(actionExecutor);
+        viewModel.InputText = "scan temp root";
+
+        var sendTask = viewModel.SendCommand.ExecuteAsync(null);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        viewModel.ShouldShowWorkflowStepIndicator.Should().BeTrue();
+        viewModel.CurrentWorkflowStepNumber.Should().Be(3);
+        viewModel.WorkflowSteps[0].Status.Should().Be(CopilotWorkflowStepStatus.Finished);
+        viewModel.WorkflowSteps[1].Status.Should().Be(CopilotWorkflowStepStatus.Finished);
+        viewModel.WorkflowSteps[2].Status.Should().Be(CopilotWorkflowStepStatus.Running);
+
+        release.SetResult();
+        await sendTask;
+    }
+
+
+    [Fact]
+    public async Task SendCommand_ForScanProposalWithAgentFollowUp_QueuesAgentProvidedPromptAfterDirectScan()
+    {
+        using var temp = new TempScanRoot();
+        var proposal = JsonSerializer.SerializeToElement(new
+        {
+            action = new
+            {
+                kind = nameof(AiActionKind.StartScan),
+                path = temp.Path,
+                will_overwrite_existing_data = false
+            },
+            card = new
+            {
+                follow_up_prompt = "continue with cleanup recommendation analysis"
+            }
+        });
+        var analysisProposal = JsonSerializer.SerializeToElement(new
+        {
+            action = new
+            {
+                kind = nameof(AiActionKind.AnalyzeCleanup),
+                path = temp.Path,
+                will_overwrite_existing_data = false
+            },
+            workflow_active_step_id = "analyze_recommendations",
+            workflow_steps = new[]
+            {
+                new { step_id = "scan_path", title = "Scan target folder" },
+                new { step_id = "analyze_recommendations", title = "Analyze cleanup recommendations" }
+            }
+        });
+        var chatService = Substitute.For<IChatService>();
+        chatService.StreamSkillMessageWithThinkingAsync(
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<AiSkill>>(),
+                Arg.Any<string?>(),
+                Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>(),
+                Arg.Any<Action<string>?>(),
+                Arg.Any<Action<string>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(
+                new ChatResponse("I prepared a scan.", string.Empty, proposal),
+                new ChatResponse("Analysis follow-up reached.", string.Empty, analysisProposal));
+        var actionExecutor = Substitute.For<IAiDiskActionExecutor>();
+        actionExecutor.ExecuteAsync(Arg.Any<AiActionRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IProgress<AiActionProgress>>())
+            .Returns(call =>
+            {
+                var request = call.Arg<AiActionRequest>();
+                return request.Kind == AiActionKind.AnalyzeCleanup
+                    ? AiActionResult.Ok("analysis complete", "generated 2 recommendations")
+                    : AiActionResult.Ok("scan complete");
+            });
+        var viewModel = CreateViewModel(chatService, new AiSkillRoutingResult([]));
+        viewModel.SetActionExecutor(actionExecutor);
+        viewModel.InputText = "scan temp root";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        viewModel.Messages.Should().HaveCount(2);
+        var assistant = viewModel.Messages.Last();
+        assistant.Sender.Should().Be(ChatSender.Assistant);
+        assistant.Text.Should().Contain("I prepared a scan.");
+        assistant.Text.Should().Contain("Analysis follow-up reached.");
+        assistant.OperationResultText.Should().Contain("扫描完成");
+        assistant.OperationResultText.Should().Contain("analysis complete");
+        assistant.OperationResultText.Should().Contain("generated 2 recommendations");
+
+        await chatService.Received(1).StreamSkillMessageWithThinkingAsync(
+            Arg.Is<string>(prompt => prompt.StartsWith("continue with cleanup recommendation analysis", StringComparison.Ordinal)),
+            Arg.Any<IReadOnlyList<AiSkill>>(),
+            Arg.Any<string?>(),
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<Action<string>?>(),
+            Arg.Any<Action<string>?>(),
+            Arg.Any<CancellationToken>());
+    }
+    [Fact]
+    public async Task SendCommand_ForScanProposalWithOverwrite_ShowsConfirmationCard()
+    {
+        using var temp = new TempScanRoot();
+        var proposal = JsonSerializer.SerializeToElement(new
+        {
+            action = new
+            {
+                kind = nameof(AiActionKind.StartScan),
+                path = temp.Path,
+                will_overwrite_existing_data = true
+            },
+            card = new
+            {
+                title = "Replace scan data?",
+                description = "Existing scan data will be replaced.",
+                confirm_text = "Overwrite",
+                cancel_text = "Cancel"
+            }
+        });
+        var chatService = Substitute.For<IChatService>();
+        chatService.StreamSkillMessageWithThinkingAsync(
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<AiSkill>>(),
+                Arg.Any<string?>(),
+                Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>(),
+                Arg.Any<Action<string>?>(),
+                Arg.Any<Action<string>?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new ChatResponse("I prepared a scan confirmation.", string.Empty, proposal));
+        var actionExecutor = Substitute.For<IAiDiskActionExecutor>();
+        var viewModel = CreateViewModel(chatService, new AiSkillRoutingResult([]));
+        viewModel.SetActionExecutor(actionExecutor);
+        viewModel.InputText = "scan temp root and replace current scan";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        viewModel.PendingInteractionCard.Should().NotBeNull();
+        viewModel.PendingInteractionCard!.Action.Kind.Should().Be(AiActionKind.StartScan);
+        viewModel.PendingInteractionCard.Action.WillOverwriteExistingData.Should().BeTrue();
+        await actionExecutor.DidNotReceive().ExecuteAsync(
+            Arg.Any<AiActionRequest>(),
             Arg.Any<CancellationToken>(),
             Arg.Any<IProgress<AiActionProgress>>());
     }
@@ -383,13 +607,14 @@ public class ChatViewModelProposalTests
             .Returns(AiActionResult.Ok("scan complete"));
         var viewModel = CreateViewModel(chatService, new AiSkillRoutingResult([]));
         viewModel.SetActionExecutor(actionExecutor);
-        viewModel.InputText = "闂備浇顫夐鏍磻閸涱収鍤?" + temp.Path;
+        viewModel.InputText = "闂傚倷娴囬～澶愵敊閺嶎厼纾婚柛娑卞弾閸?" + temp.Path;
 
         await viewModel.SendCommand.ExecuteAsync(null);
 
         viewModel.PendingInteractionCard.Should().BeNull();
         viewModel.Messages.Last().InteractionCard.Should().BeNull();
         viewModel.Messages.Last().Text.Should().Be("I prepared a scan card.");
+        viewModel.Messages.Last().Thinking.Should().BeEmpty();
         viewModel.Messages.Last().OperationResultText.Should().Contain("\u626b\u63cf\u5b8c\u6210");
         viewModel.Messages.Last().OperationResultText.Should().NotContain("card");
         await actionExecutor.Received(1).ExecuteAsync(
@@ -399,7 +624,7 @@ public class ChatViewModelProposalTests
     }
 
     [Fact]
-    public async Task SendCommand_ForCleanupAnalysisProposal_ExecutesWithoutConfirmationCard()
+    public async Task SendCommand_ForCleanupAnalysisProposalWithoutOverwrite_ExecutesWithoutConfirmationCard()
     {
         var proposal = JsonSerializer.SerializeToElement(new
         {
@@ -407,7 +632,7 @@ public class ChatViewModelProposalTests
             {
                 kind = nameof(AiActionKind.AnalyzeCleanup),
                 scope_label = "current scan",
-                will_overwrite_existing_data = true
+                will_overwrite_existing_data = false
             },
             card = new
             {
@@ -440,7 +665,7 @@ public class ChatViewModelProposalTests
 
         viewModel.PendingInteractionCard.Should().BeNull();
         viewModel.Messages.Last().InteractionCard.Should().BeNull();
-        viewModel.Messages.Last().Text.Should().BeEmpty();
+        viewModel.Messages.Last().Text.Should().Be("I prepared an analysis card. This should not be shown as a cleanup report.");
         viewModel.Messages.Last().OperationResultText.Should().Contain("analysis complete");
         viewModel.Messages.Last().OperationResultText.Should().Contain("3 candidates");
         viewModel.Messages.Last().OperationResultText.Should().NotContain("cleanup report");
@@ -451,7 +676,7 @@ public class ChatViewModelProposalTests
     }
 
     [Fact]
-    public async Task SendCommand_ForAmbiguousAnalysisProposal_AsksClarificationWithoutExecuting()
+    public async Task SendCommand_ForCleanupAnalysisProposalWithOverwrite_ShowsConfirmationCard()
     {
         var proposal = JsonSerializer.SerializeToElement(new
         {
@@ -460,6 +685,14 @@ public class ChatViewModelProposalTests
                 kind = nameof(AiActionKind.AnalyzeCleanup),
                 scope_label = "current scan",
                 will_overwrite_existing_data = true
+            },
+            card = new
+            {
+                title = "Analyze cleanup recommendations",
+                description = "Analyze cleanup candidates.",
+                impact = "Existing recommendations will be replaced.",
+                confirm_text = "Start analysis",
+                cancel_text = "Cancel"
             }
         });
         var chatService = Substitute.For<IChatService>();
@@ -473,19 +706,17 @@ public class ChatViewModelProposalTests
                 Arg.Any<Action<string>?>(),
                 Arg.Any<Action<string>?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new ChatResponse("I will analyze it now.", string.Empty, proposal));
+            .Returns(new ChatResponse("Existing recommendations need confirmation.", string.Empty, proposal));
         var actionExecutor = Substitute.For<IAiDiskActionExecutor>();
         var viewModel = CreateViewModel(chatService, new AiSkillRoutingResult([]));
         viewModel.SetActionExecutor(actionExecutor);
-        viewModel.InputText = "分析一下";
+        viewModel.InputText = "analyze cleanup recommendations";
 
         await viewModel.SendCommand.ExecuteAsync(null);
 
-        viewModel.PendingInteractionCard.Should().BeNull();
-        viewModel.Messages.Last().InteractionCard.Should().BeNull();
-        viewModel.Messages.Last().Text.Should().Contain("你想让我分析什么");
-        viewModel.Messages.Last().Text.Should().Contain("扫描指定路径");
-        viewModel.Messages.Last().OperationResultText.Should().BeNullOrWhiteSpace();
+        viewModel.PendingInteractionCard.Should().NotBeNull();
+        viewModel.PendingInteractionCard!.Action.Kind.Should().Be(AiActionKind.AnalyzeCleanup);
+        viewModel.PendingInteractionCard.Action.WillOverwriteExistingData.Should().BeTrue();
         await actionExecutor.DidNotReceive().ExecuteAsync(
             Arg.Any<AiActionRequest>(),
             Arg.Any<CancellationToken>(),
@@ -506,14 +737,14 @@ public class ChatViewModelProposalTests
             Title = "Discover cleanup candidates",
             Description = "Discover Unity cleanup candidates.",
             Action = new AiActionRequest(AiActionKind.DiscoverUnityLibraries),
-            UserNotes = "闂備礁鎲￠悷顖涚濠靛洨鐝堕柛宀€鍋涚粻?D: 闂?E:"
+            UserNotes = "闂傚倷绀侀幉锟犳偡椤栨稓顩叉繝闈涙川閻濆爼鏌涘畝鈧崑娑氱不?D: 闂?E:"
         };
         viewModel.PendingInteractionCard = card;
 
         await viewModel.ConfirmInteractionCommand.ExecuteAsync(card);
 
         await actionExecutor.Received(1).ExecuteAsync(
-            Arg.Is<AiActionRequest>(request => request.Kind == AiActionKind.DiscoverUnityLibraries && request.UserNotes == "闂備礁鎲￠悷顖涚濠靛洨鐝堕柛宀€鍋涚粻?D: 闂?E:"),
+            Arg.Is<AiActionRequest>(request => request.Kind == AiActionKind.DiscoverUnityLibraries && request.UserNotes == "闂傚倷绀侀幉锟犳偡椤栨稓顩叉繝闈涙川閻濆爼鏌涘畝鈧崑娑氱不?D: 闂?E:"),
             Arg.Any<CancellationToken>(),
             Arg.Any<IProgress<AiActionProgress>>());
     }
@@ -895,6 +1126,22 @@ public class ChatViewModelProposalTests
         await actionExecutor.DidNotReceive().ExecuteAsync(Arg.Any<AiActionRequest>(), Arg.Any<CancellationToken>());
     }
 
+    private static async Task WaitUntilAsync(Func<bool> condition, int timeoutMs = 3000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(50);
+        }
+
+        condition().Should().BeTrue();
+    }
+
     private static JsonElement CreateClearConversationProposal()
         => JsonSerializer.SerializeToElement(new
         {
@@ -922,6 +1169,7 @@ public class ChatViewModelProposalTests
         router.GetSkillCatalog().Returns([
             new AiSkillCatalogItem("app-guide", "app-guide", "Guide the app"),
             new AiSkillCatalogItem("disk-management", "disk-management", "Manage disk space"),
+            new AiSkillCatalogItem("path-cleanup-recommendation", "path-cleanup-recommendation", "Analyze cleanup recommendations for a path"),
             new AiSkillCatalogItem("unity-project-cleanup", "unity-project-cleanup", "Clean Unity projects")
         ]);
         router.Route(Arg.Any<string>(), Arg.Any<FileEntry?>(), Arg.Any<FileEntry?>(), Arg.Any<bool>(), Arg.Any<string?>())

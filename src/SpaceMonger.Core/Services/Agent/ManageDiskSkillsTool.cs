@@ -9,6 +9,7 @@ public sealed class ManageDiskSkillsTool(ISkillPromptProvider skillPromptProvide
     {
         "app-guide",
         "disk-management",
+        "path-cleanup-recommendation",
         "unity-project-cleanup"
     };
 
@@ -27,7 +28,7 @@ public sealed class ManageDiskSkillsTool(ISkillPromptProvider skillPromptProvide
 
     public override string Name => "manage_disk_skills";
 
-    public override string Description => "List, read, create, update, or delete user disk-management skills. Create/update only after the user asks for a disk-management workflow that can be implemented with SpaceMonger host tools; refuse non-disk or unsupported skill creation requests instead of calling this tool.";
+    public override string Description => "List and read built-in or user disk-management skills so the agent can discover native workflows; create, update, or delete user disk-management skills only when the user explicitly asks to manage skills. Create/update only for workflows implementable with SpaceMonger host tools; refuse non-disk or unsupported skill requests.";
 
     public override ToolRiskLevel RiskLevel => ToolRiskLevel.Medium;
 

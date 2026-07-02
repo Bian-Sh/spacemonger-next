@@ -34,6 +34,26 @@ public class AiSkillRouterTests
         result.SelectedSkillIds.Should().BeEmpty();
         result.Skills.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Route_NaturalLanguageRecommendationRequest_DoesNotInjectSkillPrompt()
+    {
+        var result = _router.Route("推荐清理 userprofile", null, null, hasExistingRecommendations: true);
+
+        result.SelectedSkillIds.Should().BeEmpty();
+        result.Skills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Route_SelectedPathCleanupSkill_InjectsSkillPromptOnly()
+    {
+        var result = _router.Route(@"@path-cleanup-recommendation 推荐清理 D:\Downloads", null, null, hasExistingRecommendations: true);
+
+        result.SelectedSkillIds.Should().ContainSingle().Which.Should().Be("path-cleanup-recommendation");
+        result.Skills.Select(skill => skill.Id).Should().ContainSingle().Which.Should().Be("path-cleanup-recommendation");
+        result.Skills.Single().Prompt.Should().Contain("Path Cleanup Recommendation Skill");
+    }
+
     [Fact]
     public void Route_GeneralChat_DoesNotInjectUnrelatedSkills()
     {
@@ -87,7 +107,7 @@ public class AiSkillRouterTests
     {
         var catalog = _router.GetSkillCatalog();
 
-        catalog.Select(skill => skill.Id).Should().Contain(["app-guide", "disk-management", "unity-project-cleanup"]);
+        catalog.Select(skill => skill.Id).Should().Contain(["app-guide", "disk-management", "path-cleanup-recommendation", "unity-project-cleanup"]);
         catalog.Should().OnlyContain(skill => !string.IsNullOrWhiteSpace(skill.Description));
         catalog.Single(skill => skill.Id == "app-guide").DisplayName.Should().Be("SpaceMonger Copilot App Guide Skill");
     }

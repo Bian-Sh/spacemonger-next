@@ -70,6 +70,8 @@ public partial class RecommendationsViewModel : ObservableObject
     public bool HasAcceptedRecommendations =>
         Recommendations.Any(r => r.IsAccepted);
 
+    public bool HasAnyRecommendations => Recommendations.Count > 0;
+
     public string EmptyStateTitleText => IsWaitingForExternalRecommendations
         ? L.Text("RecommendationsWaitingForAiTitle")
         : L.Text("RecommendationsEmptyTitle");

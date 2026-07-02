@@ -163,3 +163,22 @@
 - 2026-07-01 Íê³É£º·¢²¼ÆÕÍ¨°ü SpaceMongerCopilot-20260701-154136 ºÍÁÙÊ±¹ÜÀíÔ±°ü SpaceMongerCopilot-admin-20260701-154136£»CUA/UIA ÑéÊÕ¶ÁÈ¡µ½ÍÆ¼öÇåÀíÁĞ±í¡¢·ÖÎö°´Å¥ºÍÁÄÌìÇøÓò¡£
 `n- 2026-07-01 ¸üĞÂ£ºÇåÀí·ÖÎö direct action Ôö¼ÓÒâÍ¼ÇåÎú¶ÈÃÅ¼÷£»·º·º¡°·ÖÎöÒ»ÏÂ¡±»á×·ÎÊÄÜÁ¦·¶Î§ÄÚÑ¡Ïî£¬²»»áÖ±½ÓÖ´ĞĞÍÆ¼öÇåÀí£»È«Á¿²âÊÔÍ¨¹ı¡£
 `n- 2026-07-01 ĞŞ¸´£ºAI ÆøÅİÄÚÒì²½×´Ì¬Ë³Ğòµ÷ÕûÎªÔ­¶Ô»°¡¢¼ÆÊ±/Íê³É×´Ì¬¡¢1px ºáÏß¡¢½á¹ûÕ¹Ê¾£»È«Á¿²âÊÔÍ¨¹ı¡£
+
+- [x] 2026-07-01 path cleanup recommendation skill: initial userprofile-specific attempt was corrected to a generic built-in skill with no local natural-language route.
+- [x] 2026-07-01 path cleanup recommendation skill: previous userprofile-specific publish is superseded by the generic implementation.
+- [x] 2026-07-01 path cleanup recommendation correction: replaced userprofile-specific skill/routing with generic built-in path-cleanup-recommendation; AI discovers skills via manage_disk_skills list/read; overwrite scan proposals show chat confirmation cards.
+- [x] 2026-07-01 path cleanup recommendation skill: published Release folder to outputs\SpaceMonger-path-cleanup-skill-20260701-201935.
+- [x] 2026-07-01 CUA selftest path cleanup recommendation: launched outputs\SpaceMonger-path-cleanup-skill-20260701-201935, scanned temp virtual tree, generated 5 recommendations, verified overwrite request shows chat overlay confirmation card and cancel keeps recommendations.
+- [x] 2026-07-01 CUA selftest followup fix: fixed direct scan cleanup follow-up; published outputs\SpaceMonger-path-cleanup-skill-followup-20260701-203540; one prompt generated 6 recommendations and overwrite request was previously verified as chat overlay card.
+
+- 2026-07-01 çº åï¼šç§»é™¤ ChatViewModel ä¸­é’ˆå¯¹æ¨èæ¸…ç†/è‡ªç„¶è¯­è¨€çš„å…³é”®è¯ç¡¬ç¼–ç ï¼›æ”¹ä¸º agent åœ¨ propose_copilot_action.card.follow_up_prompt ä¸­æ˜¾å¼å£°æ˜æ‰«ææˆåŠŸåçš„ä¸‹ä¸€è½®æŒ‡ä»¤ã€‚App ChatViewModelProposalTests 29/29 é€šè¿‡ï¼›Core AiSkillRouter/AgentRuntime/ManageDiskSkills/AgentProposal 30/30 é€šè¿‡ã€‚
+
+- 2026-07-01 éªŒè¯ï¼šçº åå ChatViewModelProposalTests 29/29 é€šè¿‡ï¼›Core AiSkillRouter/AgentRuntime/ManageDiskSkills/AgentProposal 30/30 é€šè¿‡ã€‚ç¡®è®¤ src/tests ä¸­æ— æ¨èæ¸…ç†è‡ªç„¶è¯­è¨€å…³é”®è¯åŒ¹é…æ®‹ç•™ã€‚
+
+- 2026-07-01 CUA éªŒæ”¶é€šè¿‡ï¼šæœ€ç»ˆåŒ… outputs\SpaceMonger-path-cleanup-agent-driven-20260701-211139ï¼›è™šæ‹Ÿç›®å½• C:\Users\BIANSH~1\AppData\Local\Temp\spacemonger-cua-cleanup-20260701-211212ï¼›è¾“å…¥ â€˜è¯´è¯´ <path> æœ‰å•¥å¯æ¸…ç†çš„ï¼Ÿâ€™ åï¼ŒAI å…ˆè§£æè·¯å¾„å¹¶æ‰«æï¼Œå†é€šè¿‡æ˜¾å¼ follow_up_prompt è¿›å…¥ AnalyzeCleanupï¼Œæ¨èæ¸…ç†åˆ—è¡¨ç”Ÿæˆ 3 é¡¹ï¼ˆcacheã€logsã€æ ¹ä¸´æ—¶ç›®å½•ï¼‰ã€‚
+
+- 2026-07-01 ¸üĞÂ£ºÎª propose_copilot_action Ôö¼Ó agent-authored workflow_steps/workflow_active_step_id Í¨ÓÃ²½ÖèÆõÔ¼£»ChatViewModel Ö»°´ agent Ìá¹©µÄ step_id äÖÈ¾/ÍÆ½ø²½ÖèÖ¸Ê¾Æ÷£¬²»×ö×ÔÈ»ÓïÑÔ¹Ø¼ü×ÖÂ·ÓÉ£»path-cleanup-recommendation skill ÒÑÒªÇóÉ¨ÃèÓë·ÖÎö proposal ´øÏàÍ¬²½Öè¼Æ»®¡£¶¨Ïò Core AgentProposal/AgentRuntime 14/14¡¢App ChatViewModelProposal 31/31 Í¨¹ı¡£
+
+- 2026-07-01 CUA ÑéÊÕ£º·¢²¼°ü outputs\SpaceMonger-path-cleanup-workflow-20260701-215825£»ĞéÄâÄ¿Â¼ C:\Users\BIANSH~1\AppData\Local\Temp\spacemonger-cua-cleanup-20260701-215844£»×ÔÈ»ÓïÑÔ¡°ËµËµ ¸ÃÂ·¾¶ ÓĞÉ¶¿ÉÇåÀíµÄ£¿¡±´¥·¢ agent ½âÎöÂ·¾¶¡¢É¨Ãè¡¢follow_up_prompt ·ÖÎö£¬ÍÆ¼öÇåÀíÁĞ±íÉú³É 2 Ïî£¨logs/old.log¡¢cache/blob.tmp£©¡£ÁíÓÃ slow ĞéÄâÄ¿Â¼ÑéÖ¤É¨ÃèÉÏÏÂÎÄ¿ÉÇĞ»»µ½ 4000 ÎÄ¼şÄ¿±ê¡£
+
+[2026-07-01 23:39:16] ĞŞ¸´ÁÄÌì workflow ÄÚÈİ±£ÁôÓë×·¼Ó£ºthinking/text ²»ÔÙ±»Çå¿Õ£»follow-up °´ step ¶ÎÂä×·¼Ó£»thinking ÔËĞĞÊ±Õ¹¿ª¡¢Íê³ÉºóÕÛµş£»CUA Ê¹ÓÃ outputs/SpaceMonger-thinking-append-20260701-233504 ÑéÖ¤Í¨¹ı¡£

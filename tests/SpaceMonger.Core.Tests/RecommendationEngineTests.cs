@@ -84,7 +84,7 @@ public class RecommendationEngineTests
         httpClientFactory.CreateClient("Anthropic").Returns(new HttpClient(handler));
         var client = new AnthropicClient(httpClientFactory);
 
-        await client.SendAnalysisAsync("system", "metadata", "key", "https://api.deepseek.com/anthropic", null, false, CancellationToken.None);
+        await client.SendAnalysisAsync("system", "metadata", "key", "https://api.deepseek.com/anthropic", null, true, CancellationToken.None);
 
         handler.RequestUri.Should().Be("https://api.deepseek.com/anthropic/v1/messages");
         using var requestJson = JsonDocument.Parse(handler.RequestBody);

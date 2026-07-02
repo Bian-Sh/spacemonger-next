@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using FluentAssertions;
 using SpaceMonger.Core.Services.Agent;
 
@@ -20,7 +20,13 @@ public class AgentProposalTests
             description = "需要先扫描这个路径，才能继续分析。",
             impact = "会创建新的扫描结果。",
             confirm_text = "开始扫描",
-            cancel_text = "取消"
+            cancel_text = "取消",
+            workflow_active_step_id = "scan_path",
+            workflow_steps = new[]
+            {
+                new { step_id = "validate_path", title = "Validate path" },
+                new { step_id = "scan_path", title = "Scan folder" }
+            }
         });
 
         var result = await tool.ExecuteAsync(context, arguments, CancellationToken.None);
@@ -28,6 +34,8 @@ public class AgentProposalTests
         result.TryGetProperty("proposal", out var proposal).Should().BeTrue();
         proposal.GetProperty("action").GetProperty("kind").GetString().Should().Be(nameof(SpaceMonger.Core.Services.Copilot.AiActionKind.StartScan));
         proposal.GetProperty("card").GetProperty("title").GetString().Should().Be("扫描这个路径");
+        proposal.GetProperty("workflow_active_step_id").GetString().Should().Be("scan_path");
+        proposal.GetProperty("workflow_steps").EnumerateArray().Should().Contain(step => step.GetProperty("step_id").GetString() == "scan_path");
     }
 
 
