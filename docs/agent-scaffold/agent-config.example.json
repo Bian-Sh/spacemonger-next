@@ -1,0 +1,14 @@
+{
+  "agents": {
+    "build": {
+      "description": "Default agent, executes tools based on configured permissions",
+      "prompt": "You are an AI coding assistant.",
+      "model": { "providerID": "anthropic", "modelID": "claude-2" }
+    },
+    "explore": {
+      "description": "Fast codebase explorer",
+      "prompt": "You are a file search specialist.",
+      "model": { "providerID": "anthropic", "modelID": "claude-2" }
+    }
+  }
+}
