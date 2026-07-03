@@ -102,9 +102,11 @@ public partial class ChatViewModel : ObservableObject
     public bool HasPendingInteractionCard => PendingInteractionCard is not null;
     public bool HasWorkflowSteps => WorkflowSteps.Count > 0;
     public bool ShouldShowWorkflowStepIndicator => WorkflowSteps.Count > 1;
+    public int CompletedWorkflowStepNumber => WorkflowSteps.Count(step => step.Status == CopilotWorkflowStepStatus.Finished);
     public string WorkflowProgressText => HasWorkflowSteps
         ? Localized($"Step {CurrentWorkflowStepNumber}/{WorkflowSteps.Count}", $"\u7b2c {CurrentWorkflowStepNumber}/{WorkflowSteps.Count} \u6b65")
         : string.Empty;
+    public string WorkflowProgressArcData => BuildWorkflowProgressArcData(CompletedWorkflowStepNumber, WorkflowSteps.Count);
     public string CurrentWorkflowIconState => CurrentWorkflowStepNumber > 0 && CurrentWorkflowStepNumber <= WorkflowSteps.Count
         ? WorkflowSteps[CurrentWorkflowStepNumber - 1].StatusIconState
         : "idle";
@@ -130,7 +132,32 @@ public partial class ChatViewModel : ObservableObject
     partial void OnCurrentWorkflowStepNumberChanged(int value)
     {
         OnPropertyChanged(nameof(WorkflowProgressText));
+        OnPropertyChanged(nameof(WorkflowProgressArcData));
         OnPropertyChanged(nameof(CurrentWorkflowIconState));
+    }
+
+    private void NotifyWorkflowProgressChanged()
+    {
+        OnPropertyChanged(nameof(CompletedWorkflowStepNumber));
+        OnPropertyChanged(nameof(WorkflowProgressText));
+        OnPropertyChanged(nameof(WorkflowProgressArcData));
+        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+    }
+
+    private static string BuildWorkflowProgressArcData(int completedStepCount, int stepCount)
+    {
+        if (completedStepCount <= 0 || stepCount <= 0) return string.Empty;
+
+        var progress = Math.Clamp((double)completedStepCount / stepCount, 0.001, 0.999);
+        const double center = 7;
+        const double radius = 5.2;
+        var angle = (progress * 360) - 90;
+        var radians = angle * Math.PI / 180;
+        var endX = center + radius * Math.Cos(radians);
+        var endY = center + radius * Math.Sin(radians);
+        var isLargeArc = progress > 0.5 ? 1 : 0;
+
+        return FormattableString.Invariant($"M 7,1.8 A 5.2,5.2 0 {isLargeArc} 1 {endX:0.###},{endY:0.###}");
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -671,8 +698,7 @@ public partial class ChatViewModel : ObservableObject
         IsWorkflowProgressVisible = WorkflowSteps.Count > 0;
         OnPropertyChanged(nameof(HasWorkflowSteps));
         OnPropertyChanged(nameof(ShouldShowWorkflowStepIndicator));
-        OnPropertyChanged(nameof(WorkflowProgressText));
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
     }
 
     private void SetWorkflowPlan(IReadOnlyList<AiWorkflowStep> steps)
@@ -686,8 +712,7 @@ public partial class ChatViewModel : ObservableObject
         IsWorkflowProgressVisible = WorkflowSteps.Count > 0;
         OnPropertyChanged(nameof(HasWorkflowSteps));
         OnPropertyChanged(nameof(ShouldShowWorkflowStepIndicator));
-        OnPropertyChanged(nameof(WorkflowProgressText));
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
     }
     private void SetWorkflowPlan(IReadOnlyList<WorkflowStepPlan> steps)
     {
@@ -700,8 +725,7 @@ public partial class ChatViewModel : ObservableObject
         IsWorkflowProgressVisible = WorkflowSteps.Count > 0;
         OnPropertyChanged(nameof(HasWorkflowSteps));
         OnPropertyChanged(nameof(ShouldShowWorkflowStepIndicator));
-        OnPropertyChanged(nameof(WorkflowProgressText));
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
     }
 
     private void StartWorkflowStep(int index)
@@ -717,7 +741,7 @@ public partial class ChatViewModel : ObservableObject
 
         CurrentWorkflowStepNumber = index + 1;
         WorkflowSteps[index].Status = CopilotWorkflowStepStatus.Running;
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
     }
 
     private int FindWorkflowStepIndex(string? stepId)
@@ -738,7 +762,7 @@ public partial class ChatViewModel : ObservableObject
     {
         if (index < 0 || index >= WorkflowSteps.Count) return;
         WorkflowSteps[index].Status = success ? CopilotWorkflowStepStatus.Finished : CopilotWorkflowStepStatus.Idle;
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
     }
 
     private void ApplyWorkflowProgress(AiActionProgress progress)
@@ -753,7 +777,6 @@ public partial class ChatViewModel : ObservableObject
             WorkflowSteps.Add(new CopilotWorkflowStep(progress.Title, progress.StepId));
             index = WorkflowSteps.Count - 1;
             OnPropertyChanged(nameof(HasWorkflowSteps));
-            OnPropertyChanged(nameof(WorkflowProgressText));
             OnPropertyChanged(nameof(ShouldShowWorkflowStepIndicator));
         }
 
@@ -771,7 +794,7 @@ public partial class ChatViewModel : ObservableObject
         }
 
         IsWorkflowProgressVisible = WorkflowSteps.Count > 0;
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
     }
 
     private CancellationToken BeginActiveOperation()
@@ -1327,10 +1350,10 @@ public partial class ChatViewModel : ObservableObject
         _pendingInteractionSourceMessage = null;
         IsWorkflowProgressVisible = false;
         WorkflowSteps.Clear();
+        CurrentWorkflowStepNumber = 0;
         OnPropertyChanged(nameof(HasWorkflowSteps));
         OnPropertyChanged(nameof(ShouldShowWorkflowStepIndicator));
-        OnPropertyChanged(nameof(WorkflowProgressText));
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
         LinkedEntry = null;
         LinkedRecommendation = null;
         LinkedItemPath = null;
@@ -1345,10 +1368,10 @@ public partial class ChatViewModel : ObservableObject
         _pendingInteractionSourceMessage = null;
         IsWorkflowProgressVisible = false;
         WorkflowSteps.Clear();
+        CurrentWorkflowStepNumber = 0;
         OnPropertyChanged(nameof(HasWorkflowSteps));
         OnPropertyChanged(nameof(ShouldShowWorkflowStepIndicator));
-        OnPropertyChanged(nameof(WorkflowProgressText));
-        OnPropertyChanged(nameof(CurrentWorkflowIconState));
+        NotifyWorkflowProgressChanged();
         LinkedEntry = null;
         LinkedRecommendation = null;
         LinkedItemPath = null;
