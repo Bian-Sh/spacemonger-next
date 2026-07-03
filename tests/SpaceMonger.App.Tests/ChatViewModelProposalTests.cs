@@ -60,7 +60,7 @@ public class ChatViewModelProposalTests
             workflow_active_step_id = "scan_path",
             workflow_steps = new[]
             {
-                new { step_id = "validate_path", title = "鏍￠獙璺緞" },
+                new { step_id = "validate_path", title = "校验路径" },
                 new { step_id = "scan_path", title = "Scan target folder" },
                 new { step_id = "analyze_recommendations", title = "Analyze cleanup recommendations" }
             },
@@ -401,11 +401,11 @@ public class ChatViewModelProposalTests
             workflow_active_step_id = "scan_path",
             workflow_steps = new[]
             {
-                new { step_id = "validate_path", title = "鏍￠獙璺緞" },
+                new { step_id = "validate_path", title = "校验路径" },
                 new { step_id = "check_existing_data", title = "检查已有数据" },
                 new { step_id = "scan_path", title = "Scan target folder" },
                 new { step_id = "analyze_recommendations", title = "Analyze cleanup recommendations" },
-                new { step_id = "finish", title = "瀹屾垚" }
+                new { step_id = "finish", title = "完成" }
             }
         });
         var chatService = Substitute.For<IChatService>();
@@ -607,7 +607,7 @@ public class ChatViewModelProposalTests
             .Returns(AiActionResult.Ok("scan complete"));
         var viewModel = CreateViewModel(chatService, new AiSkillRoutingResult([]));
         viewModel.SetActionExecutor(actionExecutor);
-        viewModel.InputText = "闂傚倷娴囬～澶愵敊閺嶎厼纾婚柛娑卞弾閸?" + temp.Path;
+        viewModel.InputText = "扫描 " + temp.Path;
 
         await viewModel.SendCommand.ExecuteAsync(null);
 
@@ -737,14 +737,14 @@ public class ChatViewModelProposalTests
             Title = "Discover cleanup candidates",
             Description = "Discover Unity cleanup candidates.",
             Action = new AiActionRequest(AiActionKind.DiscoverUnityLibraries),
-            UserNotes = "闂傚倷绀侀幉锟犳偡椤栨稓顩叉繝闈涙川閻濆爼鏌涘畝鈧崑娑氱不?D: 闂?E:"
+            UserNotes = "用户备注：只处理 D: 和 E:"
         };
         viewModel.PendingInteractionCard = card;
 
         await viewModel.ConfirmInteractionCommand.ExecuteAsync(card);
 
         await actionExecutor.Received(1).ExecuteAsync(
-            Arg.Is<AiActionRequest>(request => request.Kind == AiActionKind.DiscoverUnityLibraries && request.UserNotes == "闂傚倷绀侀幉锟犳偡椤栨稓顩叉繝闈涙川閻濆爼鏌涘畝鈧崑娑氱不?D: 闂?E:"),
+            Arg.Is<AiActionRequest>(request => request.Kind == AiActionKind.DiscoverUnityLibraries && request.UserNotes == "用户备注：只处理 D: 和 E:"),
             Arg.Any<CancellationToken>(),
             Arg.Any<IProgress<AiActionProgress>>());
     }

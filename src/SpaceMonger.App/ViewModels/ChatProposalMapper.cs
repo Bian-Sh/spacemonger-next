@@ -29,7 +29,7 @@ internal static class ChatProposalMapper
             },
             AiActionKind.StartScan => new AiInteractionCard
             {
-                Title = ChatViewModel.Localized("Scan this path", "鎵弿杩欎釜璺緞"),
+                Title = ChatViewModel.Localized("Scan this path", "扫描这个路径"),
                 Description = ChatViewModel.Localized($"Scan {scope} before analyzing its space usage.", $"需要先扫描 {scope}，才能继续分析里面的空间占用。"),
                 Impact = ChatViewModel.Localized("This replaces the current scan result and refreshes Treemap, TreeView, and AI-readable space context.", "会替换当前扫描结果，并刷新 Treemap、TreeView 和 AI 可理解的空间上下文。"),
                 ConfirmText = ChatViewModel.Localized("Start Scan", "开始扫描"),
@@ -39,7 +39,7 @@ internal static class ChatProposalMapper
             },
             AiActionKind.AnalyzeCleanup => new AiInteractionCard
             {
-                Title = ChatViewModel.Localized("Analyze cleanup recommendations", "鍒嗘瀽娓呯悊寤鸿"),
+                Title = ChatViewModel.Localized("Analyze cleanup recommendations", "分析清理建议"),
                 Description = ChatViewModel.Localized($"Generate reviewable cleanup candidates for {scope}.", $"为 {scope} 生成可复核的清理候选项。"),
                 Impact = action.WillOverwriteExistingData
                     ? ChatViewModel.Localized("This overwrites existing recommendations; actual cleanup still requires another confirmation.", "会覆盖现有推荐结果；真正清理仍需要你再次确认。")
@@ -60,7 +60,6 @@ internal static class ChatProposalMapper
             }
         };
     }
-
 
     internal static void ApplyProposalIfAny(ChatMessage message, JsonElement? proposal)
     {
